@@ -1,0 +1,60 @@
+{
+    "name": "famcare/zatca-e-invoicing",
+    "description": "ZATCA E-Invoicing Plugin for WooCommerce - Complete solution for Saudi Arabia tax compliance",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Famcare Team",
+            "email": "info@famcare.app"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require": {
+        "php": ">=7.4",
+        "ramsey/uuid": "^4.0",
+        "guzzlehttp/guzzle": "^6.0",
+        "ext-openssl": "*",
+        "ext-xml": "*",
+        "ext-json": "*",
+        "ext-curl": "*",
+        "phpseclib/phpseclib": "^3.0",
+        "endroid/qr-code": "^4.0",
+        "spatie/array-to-xml": "^2.0",
+        "robrichards/xmlseclibs": "^3.1",
+        "chillerlan/php-qrcode": "4.3.2",
+        "sabre/xml": "^4.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0",
+        "squizlabs/php_codesniffer": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Famcare\\ZatcaInvoicing\\": "includes/"
+        },
+        "classmap": [
+            "includes/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Famcare\\ZatcaInvoicing\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/installers": true
+        }
+    },
+    "extra": {
+        "installer-name": "zatca-e-invoicing"
+    },
+    "scripts": {
+        "test": "phpunit",
+        "cs": "phpcs --standard=PSR12 includes/",
+        "cbf": "phpcbf --standard=PSR12 includes/"
+    }
+} 

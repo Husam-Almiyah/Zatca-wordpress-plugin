@@ -1,0 +1,139 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '7.4'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, iconv, json, mbstring, pdo
+        
+    - name: Get Composer Cache Directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+      
+    - name: Cache Composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+        
+    - name: Install dependencies
+      run: composer install --no-dev --optimize-autoloader
+      
+    - name: Create release ZIP
+      run: |
+        PLUGIN_NAME="Zatca-wordpress-plugin"
+        # Extract version from tag, fallback to timestamp if not a tag
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+        else
+          VERSION=$(date +%Y%m%d-%H%M%S)
+        fi
+        ZIP_NAME="${PLUGIN_NAME}-${VERSION}.zip"
+        
+        echo "Creating release package: $ZIP_NAME"
+        
+        # Create release directory
+        mkdir -p release/$PLUGIN_NAME
+        
+        # Copy plugin files
+        rsync -av --exclude-from=.gitignore \
+          --exclude=".git/" \
+          --exclude=".github/" \
+          --exclude="release/" \
+          --exclude="tests/" \
+          --exclude="*.md" \
+          --exclude="composer.json" \
+          --exclude="composer.lock" \
+          --exclude=".gitignore" \
+          --exclude="release-prep.sh" \
+          ./ release/$PLUGIN_NAME/
+        
+        # Copy essential documentation
+        cp README.md release/$PLUGIN_NAME/
+        cp LICENSE release/$PLUGIN_NAME/
+        cp CHANGELOG.md release/$PLUGIN_NAME/
+        cp INSTALLATION.md release/$PLUGIN_NAME/
+        cp vendor -r release/$PLUGIN_NAME/
+        
+        # Create ZIP
+        cd release
+        zip -r $ZIP_NAME $PLUGIN_NAME -x "*.DS_Store" "*/.*"
+        cd ..
+        
+        # Move ZIP to root
+        mv release/$ZIP_NAME .
+        
+        echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+        echo "Release package created: $ZIP_NAME"
+        
+    - name: Upload release asset
+      uses: actions/upload-artifact@v4
+      with:
+        name: plugin-zip
+        path: ${{ env.ZIP_NAME }}
+        
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ env.ZIP_NAME }}
+        generate_release_notes: true
+        body: |
+          ## Installation Instructions
+          
+          ### For End Users (Recommended)
+          1. Download the ZIP file below
+          2. Go to WordPress Admin → Plugins → Add New
+          3. Click "Upload Plugin" and select the ZIP file
+          4. Click "Install Now" and then "Activate Plugin"
+          5. Configure in WooCommerce → ZATCA
+          
+          ### For Developers
+          ```bash
+          git clone https://github.com/Husam-Almiyah/Zatca-wordpress-plugin.git
+          cd Zatca-wordpress-plugin
+          composer install --no-dev --optimize-autoloader
+          ```
+          
+          ## Requirements
+          - WordPress 5.0+
+          - WooCommerce 5.0+
+          - PHP 7.4+
+          - ZATCA Account
+          
+          ## Features
+          - ✅ ZATCA Phase 1 & 2 Compliance
+          - ✅ QR Code Generation
+          - ✅ XML Invoice Generation
+          - ✅ API Integration
+          - ✅ WooCommerce Integration
+          - ✅ Certificate Management
+          - ✅ Multi-language Support
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Manual Build Complete
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "✅ Manual build completed successfully!"
+        echo "📦 Release package: ${{ env.ZIP_NAME }}"
+        echo "📁 Download the artifact from the Actions tab above"
+
